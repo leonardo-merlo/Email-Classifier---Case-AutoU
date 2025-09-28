@@ -26,7 +26,7 @@ export default function UploadForm({ onNewResult }) {
       if (text.trim()) formData.append("email_text", text.trim());
       if (context.trim()) formData.append("extra_context", context.trim());
 
-      const res = await axios.post("http://127.0.0.1:8000/analyze", formData);
+      const res = await axios.post("email-classifier-case-autou-production.up.railway.app", formData);
       onNewResult(res.data);
       
       // Limpar formulário após sucesso
