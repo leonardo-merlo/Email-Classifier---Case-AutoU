@@ -28,6 +28,7 @@ export default function UploadForm({ onNewResult }) {
 
       const res = await axios.post("https://email-classifier-case-autou-production.up.railway.app/analyze", formData);
       onNewResult(res.data);
+      console.log("Data recebida do backend:", res.data.created_at);
       
       // Limpar formulário após sucesso
       setFile(null);

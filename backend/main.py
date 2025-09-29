@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import os
 import json
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 # Importação do Google Gemini AI
 import google.generativeai as genai
@@ -198,8 +199,11 @@ async def analyze_email(
         if result_json.get("category", "").lower() != "produtivo":
             result_json["suggestion"] = ""
 
-        # ADICIONA DATA
-        result_json["created_at"] = datetime.utcnow().isoformat()
+        # Adicior data
+        BR_TZ = ZoneInfo("America/Sao_Paulo")
+        now_br = datetime.now().astimezone(BR_TZ)
+        result_json["created_at"] = now_br.isoformat()
+        print("Horário de criação (BR):", result_json["created_at"])   
 
         return result_json
 
