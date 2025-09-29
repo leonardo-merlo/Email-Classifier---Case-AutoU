@@ -8,6 +8,8 @@ import os
 import json
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import json
+
 
 # Importação do Google Gemini AI
 import google.generativeai as genai
@@ -41,29 +43,51 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- substitua estas duas funções no seu código ---
+
 def clean_text(text: str) -> str:
-    """
-    Limpa e normaliza o texto removendo caracteres especiais, invisíveis e normalizando espaços.
-    """
-    if isinstance(text, bytes):
-        text = text.decode("utf-8", errors="replace")
-    text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\u200B-\u200F\uFEFF]', ' ', text)
-    text = re.sub(r'[\U00010000-\U0010FFFF]', ' ', text)
-    text = unicodedata.normalize("NFKC", text)
-    text = re.sub(r'\s+', ' ', text).strip()
-    return text
+    # Normaliza para NFC (mantém acentos) e remove só caracteres de controle básicos
+    if not isinstance(text, str):
+        text = str(text)
+    text = unicodedata.normalize("NFC", text)
+    text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\uFEFF]', ' ', text)
+    return re.sub(r'\s+', ' ', text).strip()
 
 def extract_text(file: UploadFile) -> str:
-    """
-    Extrai texto de arquivos PDF, TXT ou EML.
-    """
-    if file.filename.endswith((".txt", ".eml")):
-        return clean_text(file.file.read().decode("utf-8", errors="ignore"))
-    elif file.filename.endswith(".pdf"):
-        pdf_reader = PyPDF2.PdfReader(file.file)
-        pages = [page.extract_text() or "" for page in pdf_reader.pages]
-        return clean_text("\n".join(pages))
-    return ""
+    # Lê bytes brutos
+    raw = file.file.read()
+
+    # Para .txt e .eml: tenta utf-8 e, se falhar, cai para latin-1 (recupera acentos)
+    if (file.filename or "").lower().endswith((".txt", ".eml")):
+        try:
+            text = raw.decode("utf-8")
+        except Exception:
+            text = raw.decode("latin-1", errors="replace")
+        return clean_text(text)
+
+    # Para PDF: tenta PyPDF2 (se falhar ou vier vazio, faz fallback simples para decodificar bytes)
+    if (file.filename or "").lower().endswith(".pdf"):
+        try:
+            file.file.seek(0)
+            pdf_reader = PyPDF2.PdfReader(file.file)
+            pages = [p.extract_text() or "" for p in pdf_reader.pages]
+            text = "\n".join(pages).strip()
+            if text:
+                return clean_text(text)
+        except Exception:
+            pass
+        # fallback simples: tenta decodificar como latin-1 (pior caso)
+        try:
+            return clean_text(raw.decode("latin-1", errors="replace"))
+        except Exception:
+            return clean_text(str(raw))
+
+    # Outros tipos: tenta utf-8 -> latin-1
+    try:
+        return clean_text(raw.decode("utf-8"))
+    except Exception:
+        return clean_text(raw.decode("latin-1", errors="replace"))
+
 
 # ============================================================================
 
@@ -74,7 +98,7 @@ async def analyze_email(
     extra_context: str = Form(None)
 ):
     try:
-        # 1️⃣ Extrair texto
+        # Extrair texto
         text = ""
         if file:
             text = extract_text(file)
@@ -87,7 +111,9 @@ async def analyze_email(
         if extra_context:
             text += f"\n\nContexto adicional: {extra_context}"
 
-        # 2️⃣ Criar prompt
+        text_safe = json.dumps(text)  # transforma o texto em string JSON válida, escapa aspas e acentos
+
+        # Criar prompt
         prompt = f"""
         Tarefa: Classifique o e-mail a seguir em "Produtivo" ou "Improdutivo".
         Caso seja "Produtivo", sugira uma resposta de email profissional e forneça uma justificativa concisa para a classificação.
@@ -96,7 +122,7 @@ async def analyze_email(
 
         Regras de Classificação:
         - "Produtivo": Exige resposta, tarefa ou aprovação.
-        - "Improdutivo": Não exige resposta ou ação.
+        - "Improdutivo": Não exige resposta ou ação, ou não contém contexto ou informações adicionais que ajudem a entender do que se trata.
 
         Formato de saída JSON (retorne APENAS o JSON, sem explicações adicionais):
         {{
@@ -106,10 +132,10 @@ async def analyze_email(
         }}
 
         Email:
-        \"\"\"{text}\"\"\" 
+        {text_safe}
         """.strip()
 
-        # 3️⃣ Chamar Gemini
+        # Chamar Gemini
         generation_config = genai.types.GenerationConfig(
             temperature=0.2,
             max_output_tokens=800
@@ -128,44 +154,7 @@ async def analyze_email(
             safety_settings=safety_settings
         )
 
-        # --- DEBUG: imprime resposta do modelo ---
-        try:
-            print("--- RESPONSE RAW ---")
-            print(response)
-            if hasattr(response, "candidates"):
-                for i, c in enumerate(response.candidates):
-                    finish_reason = getattr(c, "finish_reason", None)
-                    print(f"candidate[{i}]: finish_reason={finish_reason}")
-                    if hasattr(c, "safety_ratings"):
-                        print("safety_ratings:", c.safety_ratings)
-                    if hasattr(c, "safety_attributes"):
-                        print("safety_attributes:", c.safety_attributes)
-        except Exception as e:
-            print("Erro ao imprimir response:", e)
-        print("---------------------")
-
-        # 4️⃣ Verificar bloqueio
-        blocked = False
-        if response.candidates:
-            finish = getattr(response.candidates[0], "finish_reason", None)
-            if finish == 2 or str(finish).lower() in ("safety", "blocked", "content_filter"):
-                blocked = True
-            c = response.candidates[0]
-            if hasattr(c, "safety_ratings"):
-                for r in c.safety_ratings:
-                    if getattr(r, "probability", 0) > 0.8:
-                        blocked = True
-
-        if blocked:
-            return {
-                "error": "Conteúdo bloqueado por filtros de segurança",
-                "category": "Erro",
-                "reason": "O modelo classificou parte do conteúdo como sensível ou com caracteres inválidos",
-                "suggestion": "Texto sanitizado / remova anexos incomuns ou trechos sensíveis e tente novamente.",
-                "created_at": datetime.utcnow().isoformat()
-            }
-
-        # 5️⃣ Interpretar resultado como JSON
+                # Interpretar resultado como JSON
         result_text = response.text or ""
         result_json = {}
         try:

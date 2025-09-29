@@ -1,5 +1,14 @@
 import { useState } from "react";
-import { CheckCircle, XCircle, AlertCircle, Copy, Check, Clock, User, Building } from "lucide-react";
+import {
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Copy,
+  Check,
+  Clock,
+  User,
+  Building,
+} from "lucide-react";
 
 export default function EmailCard({ email }) {
   const [copied, setCopied] = useState(false);
@@ -15,7 +24,7 @@ export default function EmailCard({ email }) {
           borderColor: "border-green-200",
           iconColor: "text-green-600",
           badgeColor: "bg-green-100 text-green-800",
-          titleColor: "text-green-900"
+          titleColor: "text-green-900",
         };
       case "Improdutivo":
         return {
@@ -24,7 +33,7 @@ export default function EmailCard({ email }) {
           borderColor: "border-orange-200",
           iconColor: "text-orange-600",
           badgeColor: "bg-orange-100 text-orange-800",
-          titleColor: "text-orange-900"
+          titleColor: "text-orange-900",
         };
       case "Erro":
         return {
@@ -33,7 +42,7 @@ export default function EmailCard({ email }) {
           borderColor: "border-red-200",
           iconColor: "text-red-600",
           badgeColor: "bg-red-100 text-red-800",
-          titleColor: "text-red-900"
+          titleColor: "text-red-900",
         };
       default:
         return {
@@ -42,7 +51,7 @@ export default function EmailCard({ email }) {
           borderColor: "border-gray-200",
           iconColor: "text-gray-600",
           badgeColor: "bg-gray-100 text-gray-800",
-          titleColor: "text-gray-900"
+          titleColor: "text-gray-900",
         };
     }
   };
@@ -71,26 +80,38 @@ export default function EmailCard({ email }) {
   };
 
   return (
-    <div className={`bg-white rounded-lg shadow-sm border-2 overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
-      email.category === "Produtivo" ? "border-green-200 bg-green-50" :
-      email.category === "Improdutivo" ? "border-orange-200 bg-orange-50" :
-      "border-red-200 bg-red-50"
-    }`}>
+    <div
+      className={`bg-white rounded-lg shadow-sm border-2 overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
+        email.category === "Produtivo"
+          ? "border-green-200 bg-green-50"
+          : email.category === "Improdutivo"
+          ? "border-orange-200 bg-orange-50"
+          : "border-red-200 bg-red-50"
+      }`}
+    >
       {/* Header do card */}
       <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <StatusIcon className={`w-6 h-6 ${
-              email.category === "Produtivo" ? "text-green-600" :
-              email.category === "Improdutivo" ? "text-orange-600" :
-              "text-red-600"
-            }`} />
+            <StatusIcon
+              className={`w-6 h-6 ${
+                email.category === "Produtivo"
+                  ? "text-green-600"
+                  : email.category === "Improdutivo"
+                  ? "text-orange-600"
+                  : "text-red-600"
+              }`}
+            />
             <div>
-              <h3 className={`text-lg font-semibold ${
-                email.category === "Produtivo" ? "text-green-900" :
-                email.category === "Improdutivo" ? "text-orange-900" :
-                "text-red-900"
-              }`}>
+              <h3
+                className={`text-lg font-semibold ${
+                  email.category === "Produtivo"
+                    ? "text-green-900"
+                    : email.category === "Improdutivo"
+                    ? "text-orange-900"
+                    : "text-red-900"
+                }`}
+              >
                 {email.category}
               </h3>
             </div>
@@ -115,7 +136,9 @@ export default function EmailCard({ email }) {
               <h4 className="font-medium text-gray-900">Email Original</h4>
             </div>
             <div className="bg-white p-3 rounded border text-sm text-gray-600 max-h-32 overflow-y-auto">
-              {showFullText ? email.originalText : truncateText(email.originalText)}
+              {showFullText
+                ? email.originalText
+                : truncateText(email.originalText)}
               {email.originalText.length > 200 && (
                 <button
                   onClick={() => setShowFullText(!showFullText)}
@@ -132,13 +155,19 @@ export default function EmailCard({ email }) {
         {email.suggestion && email.category === "Produtivo" && (
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
-              <h4 className="font-medium text-gray-900">Sugestão de Resposta</h4>
+              <h4 className="font-medium text-gray-900">
+                Sugestão de Resposta
+              </h4>
               <button
                 onClick={handleCopySuggestion}
                 className="inline-flex items-center gap-2 px-3 py-1 text-sm font-medium text-green-900 bg-green-100 border border-green-200 rounded-md hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-green-300 transition-all duration-200"
                 title="Copiar sugestão de resposta"
               >
-                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copied ? (
+                  <Check className="w-4 h-4" />
+                ) : (
+                  <Copy className="w-4 h-4" />
+                )}
                 {copied ? "Copiado!" : "Copiar"}
               </button>
             </div>
@@ -174,12 +203,12 @@ export default function EmailCard({ email }) {
                   const date = new Date(email.created_at);
                   // Ajuste de 3 horas de diferença (UTC: GMT-3)
                   date.setHours(date.getHours() - 3);
-                  return date.toLocaleString('pt-BR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
+                  return date.toLocaleString("pt-BR", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
                   });
                 })()
               : "-"}
